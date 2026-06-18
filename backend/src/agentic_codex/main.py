@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from agentic_codex.db.database import create_tables
 
 app = FastAPI()
 
