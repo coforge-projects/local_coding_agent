@@ -1,7 +1,9 @@
 from logging.config import fileConfig
 
 from sqlalchemy import pool
-from agentic_codex.db.models import Base 
+
+from src.agentic_codex.db.models import Base  # u run the miggration command in backend/ it will work
+
 from alembic import context
 from sqlalchemy.ext.asyncio import async_engine_from_config
 import asyncio
