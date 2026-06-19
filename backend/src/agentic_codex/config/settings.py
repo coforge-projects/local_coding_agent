@@ -7,7 +7,7 @@ class Settings(BaseSettings):
 
     # Azure OpenAI (placeholder for now)
     azure_openai_endpoint: str = ""
-    azure_openai_key: str = ""
+    azure_openai_api_key: str = ""
 
     # Database (placeholder)
     database_url: str = ""

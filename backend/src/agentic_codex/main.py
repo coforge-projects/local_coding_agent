@@ -1,9 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+
 from agentic_codex.db.database import create_tables
-from fastapi import Depends
-from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.auth.auth_dependencies import require_role
+from agentic_codex.api.routes.chat import router as chat_router
 
 app = FastAPI()
 
@@ -20,7 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# For creating tables
+# ✅ Register routes
+app.include_router(chat_router)
+
+# ✅ Startup event (DB optional)
 @app.on_event("startup")
 async def startup():
     try:
@@ -30,6 +33,8 @@ async def startup():
         print("⚠️ DB not ready yet — continuing without DB")
         print(e)
 
+
+# ✅ Health check with RBAC
 @app.get("/health")
 def health_check(user=Depends(require_role("viewer"))):
     return {
