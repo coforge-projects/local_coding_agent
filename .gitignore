@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Env
+.env
+
+# Logs
+logs/*
+
+# Data (optional depending on sensitivity)
+data/*
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
