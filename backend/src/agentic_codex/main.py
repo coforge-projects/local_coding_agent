@@ -5,6 +5,9 @@ from fastapi import Depends
 from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.auth.auth_dependencies import require_role
 
+from agentic_codex.api import projects, users  # importing api's
+
+
 app = FastAPI()
 
 # ✅ Allow frontend (Angular) to connect
@@ -36,3 +39,8 @@ def health_check(user=Depends(require_role("viewer"))):
         "status": "ok",
         "user": user
     }
+
+
+# from database side api
+app.include_router(projects.router)
+app.include_router(users.router)
