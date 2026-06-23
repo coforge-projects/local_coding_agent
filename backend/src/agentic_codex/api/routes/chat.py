@@ -2,10 +2,14 @@ from fastapi import APIRouter
 from agentic_codex.api.schemas.chat import ChatRequest, ChatResponse, ChatMessage
 import uuid
 from datetime import datetime
+import json
+
+# ✅ tools
+from agentic_codex.tools.file_ops import create_file, read_file, write_file
+from agentic_codex.tools.safe_code_exec import execute_python
 
 router = APIRouter()
 
-# ✅ Store data: project → conversations → messages
 projects = {}
 
 
@@ -15,22 +19,19 @@ async def chat(payload: ChatRequest):
     conversation_id = payload.conversation_id
     message = payload.message
 
-    # ✅ Ensure project exists
     if project_id not in projects:
         projects[project_id] = {}
 
     project_conversations = projects[project_id]
 
-    # ✅ Create new conversation if needed
     if not conversation_id:
         conversation_id = str(uuid.uuid4())
         project_conversations[conversation_id] = []
 
-    # ✅ Ensure conversation exists
     if conversation_id not in project_conversations:
         project_conversations[conversation_id] = []
 
-    # ✅ Store user message
+    # ✅ store user message
     project_conversations[conversation_id].append({
         "id": str(uuid.uuid4()),
         "role": "user",
@@ -38,9 +39,102 @@ async def chat(payload: ChatRequest):
         "timestamp": datetime.utcnow().isoformat()
     })
 
-    response_text = f"Echo: {message}"
+    from agentic_codex.llm.azure_client import generate_response
 
-    # ✅ Store assistant message
+    history = project_conversations[conversation_id]
+
+    messages = [{"role": msg["role"], "content": msg["content"]} for msg in history]
+
+    response_text = await generate_response(messages)
+
+    try:
+        json_part = None
+
+        # ✅ extract JSON from response
+        start = response_text.find('[')
+        end = response_text.rfind(']') + 1
+
+        if start != -1 and end != -1:
+            json_part = response_text[start:end]
+        else:
+            start = response_text.find('{')
+            end = response_text.rfind('}') + 1
+            if start != -1 and end != -1:
+                json_part = response_text[start:end]
+
+        if json_part:
+            action_list = json.loads(json_part)
+
+            if isinstance(action_list, dict):
+                action_list = [action_list]
+
+            results = []
+            last_file = None
+
+            for action_item in action_list:
+                action = action_item.get("action")
+                input_value = action_item.get("input", "")
+                content_value = action_item.get("content", "")
+
+                # ✅ sanitize filename
+                if "." in input_value:
+                    parts = input_value.split(".")
+                    input_value = parts[0] + "." + parts[1].split()[0]
+                else:
+                    input_value = input_value.split()[0]
+
+                if action == "create_file":
+                    result = create_file(project_id, input_value)
+                    last_file = input_value
+
+                elif action == "write_file":
+                    create_file(project_id, input_value)
+                    result = write_file(project_id, input_value, content_value)
+                    last_file = input_value
+
+                elif action == "read_file":
+                    result = read_file(project_id, input_value)
+
+                elif action == "execute_python":
+                    result = execute_python(project_id, input_value)
+
+                    # ✅ REAL DEBUG LOOP (code + error)
+                    if "Error:" in result and last_file:
+                        error_msg = result
+                        code = read_file(project_id, last_file)
+
+                        fix_prompt = [
+                            {
+                                "role": "system",
+                                "content": "Fix Python code. Return ONLY corrected code."
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Code:\n{code}\n\nError:\n{error_msg}"
+                            }
+                        ]
+
+                        fix_response = await generate_response(fix_prompt)
+
+                        # ✅ clean extracted code
+                        fixed_code = fix_response.strip().strip("```python").strip("```")
+
+                        write_file(project_id, last_file, fixed_code)
+
+                        # ✅ retry
+                        result = execute_python(project_id, last_file)
+
+                else:
+                    continue
+
+                results.append(result)
+
+            if results:
+                response_text = "\n".join(results)
+
+    except Exception as e:
+        print("Action parsing failed:", e)
+
     project_conversations[conversation_id].append({
         "id": str(uuid.uuid4()),
         "role": "assistant",
@@ -57,42 +151,3 @@ async def chat(payload: ChatRequest):
             tokens_used=10
         )
     )
-
-
-@router.get("/projects/{project_id}/conversations/{conversation_id}")
-async def get_conversation(project_id: str, conversation_id: str):
-    if project_id not in projects:
-        return {"detail": "Project not found"}
-
-    if conversation_id not in projects[project_id]:
-        return {"detail": "Conversation not found"}
-
-    return {
-        "conversation_id": conversation_id,
-        "messages": projects[project_id][conversation_id]
-    }
-
-
-@router.get("/projects/{project_id}/conversations")
-async def list_conversations(project_id: str):
-    if project_id not in projects:
-        return {"detail": "Project not found"}
-
-    return {
-        "project_id": project_id,
-        "conversation_ids": list(projects[project_id].keys())
-    }
-
-@router.post("/projects")
-async def create_project(name: str):
-    if name in projects:
-        return {"detail": "Project already exists"}
-
-    projects[name] = {}
-    return {"project_id": name}
-
-@router.get("/projects")
-async def list_projects():
-    return {
-        "projects": list(projects.keys())
-    }
