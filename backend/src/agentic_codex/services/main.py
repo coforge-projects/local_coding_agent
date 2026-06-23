@@ -5,7 +5,8 @@ from agentic_codex.db.database import create_tables
 from agentic_codex.auth.auth_dependencies import require_role
 from agentic_codex.api.routes.chat import router as chat_router
 
-from agentic_codex.api import projects, users  # importing api's
+from agentic_codex.api import projects, users , conversations, audit  # importing api's
+
 
 
 app = FastAPI()
@@ -49,3 +50,5 @@ def health_check(user=Depends(require_role("viewer"))):
 # from database side api
 app.include_router(projects.router)
 app.include_router(users.router)
+app.include_router(conversations.router)
+app.include_router(audit.router)
