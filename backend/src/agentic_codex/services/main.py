@@ -8,7 +8,6 @@ from agentic_codex.api.routes.chat import router as chat_router
 from agentic_codex.api import projects, users , conversations, audit  # importing api's
 
 
-
 app = FastAPI()
 
 # ✅ Allow frontend (Angular) to connect

@@ -1,20 +1,44 @@
 import os
-import asyncio
 from dotenv import load_dotenv
 import aioodbc
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
-
+# ✅ Azure SQL connection string
 CONN_STR = os.getenv("SERVER_CONNECTION_STRING")
 
+# ✅ MCP instance
+mcp = FastMCP("agentic-codex")
 
-mcp = FastMCP("azure-sql-mcp")
+
+# ================================
+# ✅ BASIC TEST TOOL
+# ================================
+@mcp.tool()
+def ping():
+    return "MCP server is running"
 
 
-#  SELECT queries (used for fetching data from database)
+# ================================
+# ✅ FILESYSTEM TOOL
+# ================================
+@mcp.tool()
+def create_file(project_id: str, filename: str):
+    file_path = Path(f"./projects/{project_id}/{filename}")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not file_path.exists():
+        file_path.write_text("")
+
+    return f"File {filename} created"
+
+
+# ================================
+# ✅ SQL READ TOOL
+# ================================
 @mcp.tool()
 async def sql__query(sql: str):
     try:
@@ -22,6 +46,7 @@ async def sql__query(sql: str):
             async with pool.acquire() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(sql)
+
                     columns = [column[0] for column in cur.description]
                     rows = await cur.fetchall()
 
@@ -36,7 +61,9 @@ async def sql__query(sql: str):
         return {"error": str(e)}
 
 
-#  INSERT / UPDATE / DELETE (used for modifying data with parameters)
+# ================================
+# ✅ SQL WRITE TOOL
+# ================================
 @mcp.tool()
 async def sql__execute(sql: str, params: list = None):
     try:
@@ -52,6 +79,6 @@ async def sql__execute(sql: str, params: list = None):
         return {"error": str(e)}
 
 
-#  Start server
+# ✅ START MCP SERVER
 if __name__ == "__main__":
     mcp.run()
