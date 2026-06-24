@@ -1,17 +1,32 @@
+import os
+from dotenv import load_dotenv
+import aioodbc
+from pathlib import Path
+
 from mcp.server.fastmcp import FastMCP
 
+load_dotenv()
+
+# ✅ Azure SQL connection string
+CONN_STR = os.getenv("SERVER_CONNECTION_STRING")
+
+# ✅ MCP instance
 mcp = FastMCP("agentic-codex")
 
-# ✅ Example tool (test)
+
+# ================================
+# ✅ BASIC TEST TOOL
+# ================================
 @mcp.tool()
 def ping():
     return "MCP server is running"
 
-# ✅ Example filesystem-style tool (optional start)
+
+# ================================
+# ✅ FILESYSTEM TOOL
+# ================================
 @mcp.tool()
 def create_file(project_id: str, filename: str):
-    from pathlib import Path
-
     file_path = Path(f"./projects/{project_id}/{filename}")
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -20,6 +35,50 @@ def create_file(project_id: str, filename: str):
 
     return f"File {filename} created"
 
-# ✅ Start MCP server
+
+# ================================
+# ✅ SQL READ TOOL
+# ================================
+@mcp.tool()
+async def sql__query(sql: str):
+    try:
+        async with aioodbc.create_pool(dsn=CONN_STR) as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(sql)
+
+                    columns = [column[0] for column in cur.description]
+                    rows = await cur.fetchall()
+
+                    result = [
+                        dict(zip(columns, row))
+                        for row in rows
+                    ]
+
+                    return {"result": result}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ================================
+# ✅ SQL WRITE TOOL
+# ================================
+@mcp.tool()
+async def sql__execute(sql: str, params: list = None):
+    try:
+        async with aioodbc.create_pool(dsn=CONN_STR) as pool:
+            async with pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(sql, params or [])
+                    await conn.commit()
+
+        return {"status": "success"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ✅ START MCP SERVER
 if __name__ == "__main__":
     mcp.run()
