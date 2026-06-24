@@ -10,7 +10,7 @@ from alembic import context
 from dotenv import load_dotenv
 load_dotenv()
 
-from agentic_codex.db.models import Base
+from src.agentic_codex.db.models import Base
 
 # Alembic config
 config = context.config
@@ -28,14 +28,14 @@ import urllib.parse
 
 def get_sync_database_url():
     username = os.getenv("SQL_USERNAME")
-    password = urllib.parse.quote_plus(os.getenv("SQL_PASSWORD"))  # ✅ FIX HERE
-    server = os.getenv("SQL_SERVER") + ",1433"
+    password = urllib.parse.quote_plus(os.getenv("SQL_PASSWORD"))
+    server = os.getenv("SQL_SERVER")
     database = os.getenv("SQL_DATABASE")
 
     return (
         f"mssql+pyodbc://{username}:{password}"
         f"@{server}:1433/{database}"
-        "?driver=ODBC+Driver+18+for+SQL+Server"
+        "?driver=SQL+Server"
         "&Encrypt=yes"
         "&TrustServerCertificate=no"
     )

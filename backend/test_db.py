@@ -1,10 +1,10 @@
 import pyodbc
 
 conn = pyodbc.connect(
-    "DRIVER={ODBC Driver 18 for SQL Server};"
-    "SERVER=serveragenticai.database.windows.net;"
+    "DRIVER={SQL Server};"
+    "SERVER=serveragenticai.database.windows.net,1433;"
     "DATABASE=free-sql-db-2677174;"
-    "UID=adminsql@serveragenticai;"
+    "UID=adminsql;"
     "PWD=P@ssword1234;"
     "Encrypt=yes;"
     "TrustServerCertificate=no;"

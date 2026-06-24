@@ -14,11 +14,7 @@ SQL_DATABASE = os.getenv("SQL_DATABASE")
 SQL_USERNAME = os.getenv("SQL_USERNAME")
 SQL_PASSWORD = quote_plus(os.getenv("SQL_PASSWORD"))
 
-DATABASE_URL = (
-    f"mssql+aioodbc://{SQL_USERNAME}:{SQL_PASSWORD}"
-    f"@{SQL_SERVER}:1433/{SQL_DATABASE}"
-    "?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=no"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 print("✅ FINAL DB URL:", DATABASE_URL)  # DEBUG
 
