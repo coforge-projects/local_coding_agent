@@ -3,7 +3,7 @@
     {
       "name": "filesystem",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem" , "."]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     },
     {
       "name": "github",
@@ -13,7 +13,7 @@
     {
       "name": "azure-sql",
       "command": "python",
-      "args": ["mcp_sql_server.py"]
+      "args": ["backend/src/agentic_codex/mcp/server.py"]
     }
   ]
 }
