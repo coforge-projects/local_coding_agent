@@ -5,11 +5,11 @@ import aioodbc
 
 from mcp.server.fastmcp import FastMCP
 
-#  Load env
 load_dotenv()
 
-#  ODBC connection string
+
 CONN_STR = os.getenv("SERVER_CONNECTION_STRING")
+
 
 mcp = FastMCP("azure-sql-mcp")
 
