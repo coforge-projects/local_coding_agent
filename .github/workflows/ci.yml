@@ -25,9 +25,9 @@ jobs:
           pip install -r backend/requirements.txt
           pip install alembic pytest
 
-      # - run: |
-      #     cd backend
-      #     alembic upgrade head
+      - run: |
+          cd backend
+          alembic upgrade head
 
       - run: |
           cd backend
