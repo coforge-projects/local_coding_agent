@@ -2,17 +2,15 @@ from fastapi import APIRouter, Depends
 from agentic_codex.api.schemas.chat import ChatRequest, ChatResponse, ChatMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
-import json
 
 # ✅ DB
 from agentic_codex.db.database import get_db
 from agentic_codex.db.repos.message_repo import MessageRepo
 from agentic_codex.db.repos.conversation_repo import ConversationRepo
-from agentic_codex.db.repos.project_repo import ProjectRepo  # ✅ NEW
+from agentic_codex.db.repos.project_repo import ProjectRepo
 
-# ✅ tools
-from agentic_codex.tools.file_ops import create_file, read_file, write_file
-from agentic_codex.tools.safe_code_exec import execute_python
+# ✅ Supervisor
+from agentic_codex.agents.supervisor import Supervisor
 
 router = APIRouter()
 
@@ -25,23 +23,38 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
 
     message_repo = MessageRepo(db)
     conversation_repo = ConversationRepo(db)
-    project_repo = ProjectRepo(db)  # ✅ NEW
+    project_repo = ProjectRepo(db)
 
-    # ✅ 1. VALIDATE PROJECT
-    project = await project_repo.get_by_id(project_id)
+    # ✅ -----------------------------
+    # ✅ FIXED PROJECT HANDLING
+    # ✅ -----------------------------
+    project = None
 
+    try:
+        # ✅ try parse UUID
+        project_uuid = uuid.UUID(str(project_id))
+        project = await project_repo.get_by_id(project_uuid)
+    except Exception:
+        project = None
+
+    # ✅ create project if invalid or not found
     if not project:
-        # ✅ auto-create project (safe fallback)
+        project_uuid = uuid.uuid4()
+
         project = await project_repo.create({
-            "id": uuid.uuid4(),
+            "id": project_uuid,
             "name": f"Project-{project_id}",
             "desc": "Auto-created project",
             "owner_id": None,
             "language": "python"
         })
-        project_id = project.id
 
-    # ✅ 2. HANDLE CONVERSATION
+    # ✅ CRITICAL: normalize project_id everywhere
+    project_id = str(project.id)
+
+    # ✅ -----------------------------
+    # ✅ CONVERSATION
+    # ✅ -----------------------------
     if not conversation_id:
         convo = await conversation_repo.create({
             "id": uuid.uuid4(),
@@ -55,7 +68,9 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
         if not convo:
             return {"detail": "Conversation not found"}
 
-    # ✅ 3. SAVE USER MESSAGE
+    # ✅ -----------------------------
+    # ✅ SAVE USER MESSAGE
+    # ✅ -----------------------------
     await message_repo.create({
         "id": uuid.uuid4(),
         "conversation_id": conversation_id,
@@ -64,7 +79,9 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
         "tokens_used": 0
     })
 
-    # ✅ 4. FETCH HISTORY
+    # ✅ -----------------------------
+    # ✅ FETCH HISTORY
+    # ✅ -----------------------------
     history = await message_repo.list_last_n(conversation_id, n=10)
 
     messages = [
@@ -72,89 +89,15 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
         for msg in reversed(history)
     ]
 
-    from agentic_codex.llm.azure_client import generate_response
+    # ✅ -----------------------------
+    # ✅ SUPERVISOR (AGENT SYSTEM)
+    # ✅ -----------------------------
+    supervisor = Supervisor(project_id=project_id)
+    response_text = await supervisor.run(messages)
 
-    response_text = await generate_response(messages)
-
-    # ✅ 5. ACTION SYSTEM (UNCHANGED)
-    try:
-        json_part = None
-
-        start = response_text.find('[')
-        end = response_text.rfind(']') + 1
-
-        if start != -1 and end != -1:
-            json_part = response_text[start:end]
-        else:
-            start = response_text.find('{')
-            end = response_text.rfind('}') + 1
-            if start != -1 and end != -1:
-                json_part = response_text[start:end]
-
-        if json_part:
-            action_list = json.loads(json_part)
-
-            if isinstance(action_list, dict):
-                action_list = [action_list]
-
-            results = []
-            last_file = None
-
-            for action_item in action_list:
-                action = action_item.get("action")
-                input_value = action_item.get("input", "")
-                content_value = action_item.get("content", "")
-
-                # ✅ sanitize filename
-                if "." in input_value:
-                    parts = input_value.split(".")
-                    input_value = parts[0] + "." + parts[1].split()[0]
-                else:
-                    input_value = input_value.split()[0]
-
-                if action == "create_file":
-                    result = create_file(project_id, input_value)
-                    last_file = input_value
-
-                elif action == "write_file":
-                    create_file(project_id, input_value)
-                    result = write_file(project_id, input_value, content_value)
-                    last_file = input_value
-
-                elif action == "read_file":
-                    result = read_file(project_id, input_value)
-
-                elif action == "execute_python":
-                    result = execute_python(project_id, input_value)
-
-                    # ✅ DEBUG LOOP
-                    if "Error:" in result and last_file:
-                        error_msg = result
-                        code = read_file(project_id, last_file)
-
-                        fix_prompt = [
-                            {"role": "system", "content": "Fix Python code. Return ONLY corrected code."},
-                            {"role": "user", "content": f"Code:\n{code}\n\nError:\n{error_msg}"}
-                        ]
-
-                        fix_response = await generate_response(fix_prompt)
-                        fixed_code = fix_response.strip().strip("```python").strip("```")
-
-                        write_file(project_id, last_file, fixed_code)
-                        result = execute_python(project_id, last_file)
-
-                else:
-                    continue
-
-                results.append(result)
-
-            if results:
-                response_text = "\n".join(results)
-
-    except Exception as e:
-        print("Action parsing failed:", e)
-
-    # ✅ 6. SAVE ASSISTANT MESSAGE
+    # ✅ -----------------------------
+    # ✅ SAVE RESPONSE
+    # ✅ -----------------------------
     await message_repo.create({
         "id": uuid.uuid4(),
         "conversation_id": conversation_id,
