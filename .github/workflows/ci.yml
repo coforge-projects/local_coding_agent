@@ -1,0 +1,78 @@
+#GitHub Actions – Provides native CI/CD pipelines for GitHub repositories.
+
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  backend:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install alembic pytest
+
+      - run: |
+          cd backend
+          alembic upgrade head
+
+      - run: |
+          cd backend
+          pytest
+
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - run: |
+          cd frontend
+          npm ci
+
+      - run: |
+          cd frontend
+          npm run build -- --configuration production
+
+
+  deploy-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - run: |
+          az webapp deploy \
+            --name ${{ secrets.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --src-path backend \
+            --type zip \
+            --dry-run
+
+# A CI pipeline refers to a Continuous Integration pipeline, which is a workflow used in software development to automatically build, test, and deploy code whenever changes are made to a codebase. It is an essential part of modern DevOps practices and helps teams improve software quality and delivery speed.
