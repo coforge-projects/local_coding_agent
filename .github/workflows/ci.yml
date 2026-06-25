@@ -25,6 +25,7 @@ jobs:
           pip install -r backend/requirements.txt
           pip install alembic pytest
 
+      # Driver for server is not there/installed in the ci machine
       # - run: |
       #     cd backend
       #     alembic upgrade head
