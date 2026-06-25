@@ -6,3 +6,4 @@ pyodbc
 alembic
 pydantic
 pytest
+python-dotenv
