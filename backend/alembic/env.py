@@ -23,22 +23,18 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-# ✅ Build SYNC database URL (important)
-import urllib.parse
+
 
 def get_sync_database_url():
-    username = os.getenv("SQL_USERNAME")
-    password = urllib.parse.quote_plus(os.getenv("SQL_PASSWORD"))
-    server = os.getenv("SQL_SERVER")
-    database = os.getenv("SQL_DATABASE")
+  
+    db_url = os.getenv("DATABASE_URL")
 
-    return (
-        f"mssql+pyodbc://{username}:{password}"
-        f"@{server}:1433/{database}"
-        "?driver=SQL+Server"
-        "&Encrypt=yes"
-        "&TrustServerCertificate=no"
-    )
+    if not db_url:
+        raise ValueError("DATABASE_URL is not set")
+
+    # convert async URL → sync driver for alembic
+    return db_url.replace("aioodbc", "pyodbc")
+
 
 # ✅ OFFLINE MODE
 def run_migrations_offline() -> None:
