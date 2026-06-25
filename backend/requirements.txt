@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy
+aioodbc
+pyodbc
+alembic
+pydantic
+pytest
