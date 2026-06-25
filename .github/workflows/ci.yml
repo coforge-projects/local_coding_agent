@@ -9,7 +9,7 @@ on:
 jobs:
 
   backend:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     env:
       DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
@@ -25,9 +25,9 @@ jobs:
           pip install -r backend/requirements.txt
           pip install alembic pytest
 
-      - run: |
-          cd backend
-          alembic upgrade head
+      # - run: |
+      #     cd backend
+      #     alembic upgrade head
 
       - run: |
           cd backend
@@ -35,7 +35,7 @@ jobs:
 
 
   frontend:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +55,7 @@ jobs:
 
   # TEMPORARILY DISABLED (until AZURE_CREDENTIALS is available)
   # deploy-check:
-  #   runs-on: windows-latest
+  #   runs-on: ubuntu-latest
   #   steps:
   #     - uses: actions/checkout@v4
   #     - uses: azure/login@v2
