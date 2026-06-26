@@ -10,6 +10,12 @@ from agentic_codex.api import projects, users , conversations, audit  # importin
 
 app = FastAPI()
 
+
+@app.get("/")
+def root():
+    return {"message": "Backend is running ✅"}
+
+
 # ✅ Allow frontend (Angular) to connect
 origins = [
     "http://localhost:4200",
