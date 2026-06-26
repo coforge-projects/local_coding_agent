@@ -7,3 +7,4 @@ alembic
 pydantic
 pytest
 python-dotenv
+openai
