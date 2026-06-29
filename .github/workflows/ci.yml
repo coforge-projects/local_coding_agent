@@ -53,6 +53,14 @@ jobs:
           cd frontend
           npm run build
 
+# testing the job
+deploy-check:
+  runs-on: ubuntu-latest
+
+  steps:
+    - uses: actions/checkout@v4
+    - run: echo "Deploy check passed (mock)"
+
 
   # TEMPORARILY DISABLED (until AZURE_CREDENTIALS is available)
   # deploy-check:
