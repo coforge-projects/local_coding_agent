@@ -54,12 +54,12 @@ jobs:
           npm run build
 
 # testing the job
-deploy-check:
-  runs-on: ubuntu-latest
+  deploy-check:
+    runs-on: ubuntu-latest
 
-  steps:
-    - uses: actions/checkout@v4
-    - run: echo "Deploy check passed (mock)"
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Deploy check passed (mock)"
 
 
   # TEMPORARILY DISABLED (until AZURE_CREDENTIALS is available)
