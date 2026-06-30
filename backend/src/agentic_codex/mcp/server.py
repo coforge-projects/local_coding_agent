@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
-import aioodbc
-from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
+
+from agentic_codex.mcp.registry import register_mcp_components
 
 load_dotenv()
 
@@ -13,71 +13,8 @@ CONN_STR = os.getenv("SERVER_CONNECTION_STRING")
 # ✅ MCP instance
 mcp = FastMCP("agentic-codex")
 
-
-# ================================
-# ✅ BASIC TEST TOOL
-# ================================
-@mcp.tool()
-def ping():
-    return "MCP server is running"
-
-
-# ================================
-# ✅ FILESYSTEM TOOL
-# ================================
-@mcp.tool()
-def create_file(project_id: str, filename: str):
-    file_path = Path(f"./projects/{project_id}/{filename}")
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if not file_path.exists():
-        file_path.write_text("")
-
-    return f"File {filename} created"
-
-
-# ================================
-# ✅ SQL READ TOOL
-# ================================
-@mcp.tool()
-async def sql__query(sql: str):
-    try:
-        async with aioodbc.create_pool(dsn=CONN_STR) as pool:
-            async with pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(sql)
-
-                    columns = [column[0] for column in cur.description]
-                    rows = await cur.fetchall()
-
-                    result = [
-                        dict(zip(columns, row))
-                        for row in rows
-                    ]
-
-                    return {"result": result}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# ================================
-# ✅ SQL WRITE TOOL
-# ================================
-@mcp.tool()
-async def sql__execute(sql: str, params: list = None):
-    try:
-        async with aioodbc.create_pool(dsn=CONN_STR) as pool:
-            async with pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    await cur.execute(sql, params or [])
-                    await conn.commit()
-
-        return {"status": "success"}
-
-    except Exception as e:
-        return {"error": str(e)}
-
+# ✅ Register all MCP components
+register_mcp_components(mcp, CONN_STR)
 
 # ✅ START MCP SERVER
 if __name__ == "__main__":

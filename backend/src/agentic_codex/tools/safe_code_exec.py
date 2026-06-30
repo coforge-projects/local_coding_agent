@@ -4,27 +4,33 @@ import sys
 
 
 def execute_python(project_id: str, filename: str):
-    file_path = Path(f"./projects/{project_id}/{filename}")
+    file_path = Path(f"./projects/{project_id}/{filename}").resolve()
+
+    print(f"EXECUTING FILE: {file_path}")
 
     if not file_path.exists():
         return f"File '{filename}' not found."
 
     try:
         result = subprocess.run(
-            [sys.executable, str(file_path)],  # ✅ fixed
+            [sys.executable, str(file_path)],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
+            cwd=file_path.parent
         )
 
-        output = result.stdout.strip()
-        error = result.stderr.strip()
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
 
-        if error:
-            return f"Error:\n{error}"
+        print(f"STDOUT: {repr(stdout)}")
+        print(f"STDERR: {repr(stderr)}")
 
-        if output:
-            return f"Output:\n{output}"
+        if stderr:
+            return f"Error:\n{stderr}"
+
+        if stdout:
+            return f"Output:\n{stdout}"
 
         return "⚠️ Code executed but produced no output."
 

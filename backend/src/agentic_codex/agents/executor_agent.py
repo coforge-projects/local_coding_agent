@@ -2,8 +2,12 @@ from typing import List, Dict
 import json
 
 from agentic_codex.agents.base_agent import BaseAgent
-from agentic_codex.tools.file_ops import create_file, read_file, write_file
+from agentic_codex.tools.file_ops import read_file, write_file
 from agentic_codex.tools.safe_code_exec import execute_python
+
+from agentic_codex.mcp.tool_registry import get_tool_registry
+from agentic_codex.mcp.tool_definitions import get_tool_descriptions
+from agentic_codex.mcp.mcp_executor import MCPExecutor
 
 
 class ExecutorAgent(BaseAgent):
@@ -12,13 +16,20 @@ class ExecutorAgent(BaseAgent):
         self.project_id = project_id
 
     async def run(self, messages: List[Dict[str, str]]) -> str:
-        # ✅ better system instruction
+        """
+        Executes actions from LLM
+        """
+
+        tool_list = get_tool_descriptions()
+
         system_prompt = {
             "role": "system",
             "content": (
-                "Execute coding tasks using tools.\n"
-                "Always return actions in JSON.\n"
-                "When writing Python code, ensure it uses print() for output."
+                "You are an executor agent.\n"
+                "Always return actions in JSON format.\n\n"
+                f"Available tools:\n{tool_list}\n\n"
+                "When writing Python code, always include print() "
+                "so output is visible."
             )
         }
 
@@ -27,14 +38,15 @@ class ExecutorAgent(BaseAgent):
         try:
             json_part = None
 
-            start = response_text.find('[')
-            end = response_text.rfind(']') + 1
+            start = response_text.find("[")
+            end = response_text.rfind("]") + 1
 
             if start != -1 and end != -1:
                 json_part = response_text[start:end]
             else:
-                start = response_text.find('{')
-                end = response_text.rfind('}') + 1
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+
                 if start != -1 and end != -1:
                     json_part = response_text[start:end]
 
@@ -47,60 +59,83 @@ class ExecutorAgent(BaseAgent):
                 results = []
                 last_file = None
 
+                mcp_executor = MCPExecutor(self.project_id)
+                tool_registry = get_tool_registry(self.project_id)
+
                 for action_item in action_list:
                     action = action_item.get("action")
                     input_value = action_item.get("input", "")
                     content_value = action_item.get("content", "")
 
-                    # ✅ sanitize filename
+                    # filename cleanup
                     if "." in input_value:
                         parts = input_value.split(".")
                         input_value = parts[0] + "." + parts[1].split()[0]
                     else:
                         input_value = input_value.split()[0]
 
-                    if action == "create_file":
-                        result = create_file(self.project_id, input_value)
-                        last_file = input_value
-
-                    elif action == "write_file":
-                        # ✅ DO NOT recreate file
-                        result = write_file(self.project_id, input_value, content_value)
-                        last_file = input_value
-
-                    elif action == "read_file":
-                        result = read_file(self.project_id, input_value)
-
-                    elif action == "execute_python":
-                        result = execute_python(self.project_id, input_value)
-
-                        # ✅ DEBUG LOOP
-                        if "Error:" in result and last_file:
-                            error_msg = result
-                            code = read_file(self.project_id, last_file)
-
-                            fix_prompt = [
-                                {
-                                    "role": "system",
-                                    "content": "Fix Python code. Return ONLY corrected code with proper print() if needed."
-                                },
-                                {
-                                    "role": "user",
-                                    "content": f"Code:\n{code}\n\nError:\n{error_msg}"
-                                }
-                            ]
-
-                            # ✅ IMPORTANT: no recursion
-                            fix_response = await super().run(fix_prompt)
-
-                            fixed_code = fix_response.strip().replace("```python", "").replace("```", "")
-
-                            write_file(self.project_id, last_file, fixed_code)
-
-                            result = execute_python(self.project_id, last_file)
-
-                    else:
+                    if action not in tool_registry:
                         continue
+
+                    result = mcp_executor.invoke(
+                        action,
+                        input_value,
+                        content_value
+                    )
+
+                    if action in ["create_file", "write_file"]:
+                        last_file = input_value
+
+                    if (
+                        action == "execute_python"
+                        and "Error:" in result
+                        and last_file
+                    ):
+                        error_msg = result
+                        code = read_file(
+                            self.project_id,
+                            last_file
+                        )
+
+                        fix_prompt = [
+                            {
+                                "role": "system",
+                                "content": (
+                                    "Fix Python code. "
+                                    "Return ONLY corrected code "
+                                    "with proper print()."
+                                )
+                            },
+                            {
+                                "role": "user",
+                                "content": (
+                                    f"Code:\n{code}\n\n"
+                                    f"Error:\n{error_msg}"
+                                )
+                            }
+                        ]
+
+                        fix_response = await super().run(
+                            fix_prompt
+                        )
+
+                        fixed_code = (
+                            fix_response
+                            .strip()
+                            .replace("```python", "")
+                            .replace("```", "")
+                        )
+
+                        write_file(
+                            self.project_id,
+                            last_file,
+                            fixed_code
+                        )
+
+                        result = execute_python(
+                            self.project_id,
+                            last_file
+                        )
 
                     results.append(result)
 

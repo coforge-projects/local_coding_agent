@@ -1,5 +1,7 @@
-from typing import List, Dict, Any
+from typing import List, Dict
+
 from agentic_codex.llm.azure_client import generate_response
+from agentic_codex.mcp.tool_definitions import get_tool_descriptions
 
 
 class BaseAgent:
@@ -8,10 +10,24 @@ class BaseAgent:
 
     async def run(self, messages: List[Dict[str, str]]) -> str:
         """
-        Core method every agent will use.
-        Calls the LLM with given messages.
+        Core method every agent uses.
         """
-        response = await generate_response(messages)
+
+        tool_descriptions = get_tool_descriptions()
+
+        system_message = {
+            "role": "system",
+            "content": (
+                f"You are {self.name}.\n\n"
+                f"Available MCP tools:\n"
+                f"{tool_descriptions}"
+            )
+        }
+
+        response = await generate_response(
+            [system_message] + messages
+        )
+
         return response
 
     def format_user_message(self, content: str) -> Dict[str, str]:

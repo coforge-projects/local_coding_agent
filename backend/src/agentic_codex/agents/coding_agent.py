@@ -1,4 +1,5 @@
 from typing import List, Dict
+
 from agentic_codex.agents.base_agent import BaseAgent
 
 
@@ -8,16 +9,19 @@ class CodingAgent(BaseAgent):
 
     async def run(self, messages: List[Dict[str, str]]) -> str:
         """
-        Main coding agent logic.
-        For now, just passes messages to LLM.
+        General-purpose conversational agent.
+        Does NOT execute tools.
         """
-        # ✅ Optional system prompt (keeps behavior consistent)
+
         system_prompt = self.format_system_message(
-            "You are a coding assistant. Follow instructions carefully and return structured responses."
+            "You are a helpful coding assistant.\n\n"
+            "Respond in natural language.\n"
+            "Do NOT return JSON actions.\n"
+            "Do NOT call tools.\n"
+            "Do NOT return structured tool responses.\n"
+            "Simply answer the user's question clearly."
         )
 
-        # ✅ prepend system prompt
         full_messages = [system_prompt] + messages
 
-        response = await super().run(full_messages)
-        return response
+        return await super().run(full_messages)
