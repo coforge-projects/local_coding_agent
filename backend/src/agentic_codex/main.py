@@ -18,8 +18,10 @@ def root():
 
 # ✅ Allow frontend (Angular) to connect
 origins = [
-    "http://localhost:4200",
+    "http://localhost:5173",  # ✅ React local dev
+    "https://ashy-forest-033f46e0f.7.azurestaticapps.net"  # ✅ your deployed frontend
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
