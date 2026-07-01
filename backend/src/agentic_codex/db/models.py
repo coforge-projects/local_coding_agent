@@ -16,6 +16,7 @@ class User(Base):
     email = mapped_column(String(255))
     name = mapped_column(String(255))
     role = mapped_column(String(50), default="user")
+    password = mapped_column(String(255))              # for normal auth 
 
 
 #  PROJECT
