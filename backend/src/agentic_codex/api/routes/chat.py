@@ -25,21 +25,18 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
     conversation_repo = ConversationRepo(db)
     project_repo = ProjectRepo(db)
 
-    # ✅ -----------------------------
-    # ✅ FIXED PROJECT HANDLING
-    # ✅ -----------------------------
+    # ✅ PROJECT HANDLING
     project = None
 
     try:
-        # ✅ try parse UUID
-        project_uuid = uuid.UUID(str(project_id))
+        project_uuid = str(uuid.UUID(str(project_id)))
         project = await project_repo.get_by_id(project_uuid)
     except Exception:
         project = None
 
     # ✅ create project if invalid or not found
     if not project:
-        project_uuid = uuid.uuid4()
+        project_uuid = str(uuid.uuid4())
 
         project = await project_repo.create({
             "id": project_uuid,
@@ -49,58 +46,57 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
             "language": "python"
         })
 
-    # ✅ CRITICAL: normalize project_id everywhere
     project_id = str(project.id)
 
-    # ✅ -----------------------------
     # ✅ CONVERSATION
-    # ✅ -----------------------------
     if not conversation_id:
         convo = await conversation_repo.create({
-            "id": uuid.uuid4(),
+            "id": str(uuid.uuid4()),
             "project_id": project_id,
             "user_id": None,
             "title": "New Conversation"
         })
-        conversation_id = convo.id
+
+        conversation_id = str(convo.id)
+
     else:
         convo = await conversation_repo.get_by_id(conversation_id)
+
         if not convo:
             return {"detail": "Conversation not found"}
 
-    # ✅ -----------------------------
     # ✅ SAVE USER MESSAGE
-    # ✅ -----------------------------
     await message_repo.create({
-        "id": uuid.uuid4(),
-        "conversation_id": conversation_id,
+        "id": str(uuid.uuid4()),
+        "conversation_id": str(conversation_id),
         "role": "user",
         "content": message,
         "tokens_used": 0
     })
 
-    # ✅ -----------------------------
     # ✅ FETCH HISTORY
-    # ✅ -----------------------------
-    history = await message_repo.list_last_n(conversation_id, n=10)
+    history = await message_repo.list_last_n(
+        conversation_id,
+        n=10
+    )
 
     messages = [
-        {"role": msg.role, "content": msg.content}
+        {
+            "role": msg.role,
+            "content": msg.content
+        }
         for msg in reversed(history)
     ]
 
-    # ✅ -----------------------------
-    # ✅ SUPERVISOR (AGENT SYSTEM)
-    # ✅ -----------------------------
+    # ✅ SUPERVISOR (LANGGRAPH FLOW)
     supervisor = Supervisor(project_id=project_id)
+
     response_text = await supervisor.run(messages)
 
-    # ✅ -----------------------------
     # ✅ SAVE RESPONSE
-    # ✅ -----------------------------
     await message_repo.create({
-        "id": uuid.uuid4(),
-        "conversation_id": conversation_id,
+        "id": str(uuid.uuid4()),
+        "conversation_id": str(conversation_id),
         "role": "assistant",
         "content": response_text,
         "tokens_used": 0
