@@ -3,26 +3,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from agentic_codex.db.database import get_db
-from agentic_codex.auth.auth_dependencies import get_current_user
+# from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.db.models import User, ProjectMember
 
 
 router = APIRouter(
     tags=["Users"],
-    dependencies=[Depends(get_current_user)]
+    # dependencies=[Depends(get_current_user)]
 )
 
 
 #  CURRENT USER
 @router.get("/users/me")
-async def get_me(user=Depends(get_current_user)):
-    return user
+# async def get_me(user=Depends(get_current_user)):
+#     return user
+async def get_me():
+    return {
+        "message": "MSA login temporarily disabled",
+        # "user": user
+    }
 
 
 #  ADD MEMBER
 @router.post("/projects/{id}/members")
 async def add_member(
-    id: int,
+    id: str,
     email: str,
     db: AsyncSession = Depends(get_db)
 ):
@@ -60,7 +65,7 @@ async def add_member(
 #  GET MEMBERS
 @router.get("/projects/{id}/members")
 async def list_members(
-    id: int,
+    id: str,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -77,8 +82,8 @@ async def list_members(
 #  REMOVE MEMBER
 @router.delete("/projects/{id}/members/{uid}")
 async def remove_member(
-    id: int,
-    uid: int,
+    id: str,   
+    uid: str,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(

@@ -6,17 +6,17 @@ from datetime import datetime
 
 from agentic_codex.db.database import get_db
 from agentic_codex.db.models import AuditLog
-from agentic_codex.auth.auth_dependencies import get_current_user
+# from agentic_codex.auth.auth_dependencies import get_current_user
 
 router = APIRouter(
     tags=["Audit"],
-    dependencies=[Depends(get_current_user)]
+    # dependencies=[Depends(get_current_user)]
 )
 
 # GET the audits from the project
 @router.get("/projects/{id}/audit")
 async def get_audit_logs(
-    id: int,
+    id: str,
     limit: int = 100,
     from_date: datetime | None = None,
     to_date: datetime | None = None,

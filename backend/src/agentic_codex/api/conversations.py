@@ -4,17 +4,17 @@ from sqlalchemy import select
 
 from agentic_codex.db.database import get_db
 from agentic_codex.db.models import Conversation, Message
-from agentic_codex.auth.auth_dependencies import get_current_user
+# from agentic_codex.auth.auth_dependencies import get_current_user
 
 router = APIRouter(
     tags=["Conversations"],
-    dependencies=[Depends(get_current_user)]
+    # dependencies=[Depends(get_current_user)]
 )
 
 #  GET conversations by project
 @router.get("/projects/{id}/conversations")
 async def get_conversations(
-    id: int,
+    id: str,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -26,7 +26,7 @@ async def get_conversations(
 #  GET messages by conversation
 @router.get("/conversations/{id}/messages")
 async def get_messages(
-    id: int,
+    id: str,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(

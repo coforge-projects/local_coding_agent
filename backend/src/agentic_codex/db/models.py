@@ -13,10 +13,10 @@ class User(Base):
 
     id = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     azure_oid = mapped_column(String(255), unique=True ,nullable=True )
-    email = mapped_column(String(255))
+    email = mapped_column(String(255) ,  unique=True)
     name = mapped_column(String(255))
     role = mapped_column(String(50), default="user")
-    password = mapped_column(String(255))              # for normal auth 
+    password = mapped_column(String(255), nullable=False)              # for normal auth 
 
 
 #  PROJECT
