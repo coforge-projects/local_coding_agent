@@ -2,43 +2,88 @@ from agentic_codex.workflows.state import AgentState
 
 
 async def tool_selection_node(state: AgentState):
-    user_message = state["messages"][-1]["content"].lower()
+    user_message = (
+        state["messages"][-1]["content"]
+        .lower()
+    )
+
+    database_keywords = [
+        "sql",
+        "database",
+        "query",
+        "table",
+        "select",
+        "insert",
+        "update database",
+        "delete from"
+    ]
+
+    filesystem_keywords = [
+        "file",
+        ".py",
+        ".js",
+        ".ts",
+        ".json",
+        ".html",
+        ".css",
+        "create",
+        "write",
+        "read",
+        "build",
+        "generate",
+        "scaffold",
+        "develop",
+        "implement",
+        "make",
+        "project",
+        "application",
+        "api",
+        "fastapi",
+        "flask",
+        "django",
+        "react",
+        "angular",
+        "node",
+        "backend",
+        "frontend"
+    ]
+
+    execution_keywords = [
+        "run",
+        "execute",
+        "debug",
+        "fix",
+        "test",
+        "retry"
+    ]
 
     if any(
         keyword in user_message
-        for keyword in [
-            "sql",
-            "database",
-            "query",
-            "table"
-        ]
+        for keyword in database_keywords
     ):
-        state["selected_tool_category"] = "database"
+        state["selected_tool_category"] = (
+            "database"
+        )
 
     elif any(
         keyword in user_message
-        for keyword in [
-            "file",
-            ".py",
-            "create",
-            "write",
-            "read"
-        ]
+        for keyword in filesystem_keywords
     ):
-        state["selected_tool_category"] = "filesystem"
+        state["selected_tool_category"] = (
+            "filesystem"
+        )
 
     elif any(
         keyword in user_message
-        for keyword in [
-            "run",
-            "execute",
-            "debug",
-            "fix"
-        ]
+        for keyword in execution_keywords
     ):
-        state["selected_tool_category"] = "execution"
+        state["selected_tool_category"] = (
+            "execution"
+        )
 
     else:
-        state["selected_tool_category"] = "general"
+        state["selected_tool_category"] = (
+            "general"
+        )
 
     return state

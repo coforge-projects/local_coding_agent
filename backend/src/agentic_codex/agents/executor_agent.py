@@ -16,10 +16,6 @@ class ExecutorAgent(BaseAgent):
         self.project_id = project_id
 
     async def run(self, messages: List[Dict[str, str]]) -> str:
-        """
-        Executes actions from LLM
-        """
-
         tool_list = get_tool_descriptions()
 
         system_prompt = {
@@ -70,19 +66,18 @@ class ExecutorAgent(BaseAgent):
                 )
 
                 for action_item in action_list:
-                    print(f"ACTION ITEM: {action_item}")
-
                     action = action_item.get("action")
+
                     input_value = action_item.get(
                         "input",
                         ""
                     )
+
                     content_value = action_item.get(
                         "content",
                         ""
                     )
 
-                    # filename cleanup
                     if input_value:
                         if "." in input_value:
                             parts = input_value.split(".")
@@ -95,9 +90,6 @@ class ExecutorAgent(BaseAgent):
                             input_value = input_value.split()[0]
 
                     if action not in tool_registry:
-                        print(
-                            f"UNKNOWN TOOL: {action}"
-                        )
                         continue
 
                     result = await mcp_executor.invoke(
@@ -105,9 +97,6 @@ class ExecutorAgent(BaseAgent):
                         input_value,
                         content_value
                     )
-
-                    print(f"TOOL: {action}")
-                    print(f"RESULT: {result}")
 
                     if action in [
                         "create_file",
@@ -134,31 +123,34 @@ class ExecutorAgent(BaseAgent):
                         )
                     )
 
+                    debug_file = None
+
+                    if action == "execute_python":
+                        debug_file = input_value
+                    elif last_file:
+                        debug_file = last_file
+
                     if (
                         action == "execute_python"
                         and has_error
-                        and last_file
+                        and debug_file
                     ):
-                        print(
-                            "AUTO DEBUG TRIGGERED"
-                        )
-
                         error_msg = result
 
                         code = read_file(
                             self.project_id,
-                            last_file
+                            debug_file
                         )
 
                         fix_prompt = [
                             {
                                 "role": "system",
                                 "content": (
-                                    "Fix Python code.\n"
-                                    "Return ONLY the corrected code.\n"
-                                    "Do not explain.\n"
-                                    "Do not use markdown.\n"
-                                    "Return valid runnable Python."
+                                    "Fix the Python code.\n"
+                                    "Return ONLY valid Python code.\n"
+                                    "No markdown.\n"
+                                    "No explanation.\n"
+                                    "Preserve original intent."
                                 )
                             },
                             {
@@ -183,19 +175,20 @@ class ExecutorAgent(BaseAgent):
 
                         write_file(
                             self.project_id,
-                            last_file,
+                            debug_file,
                             fixed_code
                         )
 
-                        result = execute_python(
+                        rerun_result = execute_python(
                             self.project_id,
-                            last_file
+                            debug_file
                         )
 
-                        print(
-                            "AFTER AUTO DEBUG:"
+                        result = (
+                            f"{error_msg}\n\n"
+                            f"Auto-debug attempted.\n\n"
+                            f"{rerun_result}"
                         )
-                        print(result)
 
                     results.append(str(result))
 
@@ -203,8 +196,6 @@ class ExecutorAgent(BaseAgent):
                     return "\n".join(results)
 
         except Exception as e:
-            return (
-                f"Execution error: {str(e)}"
-            )
+            return f"Execution error: {str(e)}"
 
         return response_text
