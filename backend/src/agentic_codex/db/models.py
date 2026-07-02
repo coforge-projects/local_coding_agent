@@ -17,6 +17,7 @@ class User(Base):
     name = mapped_column(String(255))
     role = mapped_column(String(50), default="user")
     password = mapped_column(String(255), nullable=False)              # for normal auth 
+    token_version = mapped_column(Integer, default=1)
 
 
 #  PROJECT

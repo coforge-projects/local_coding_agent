@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.db.database import get_db
 from agentic_codex.db.models import Conversation, Message
-# from agentic_codex.auth.auth_dependencies import get_current_user
 
 router = APIRouter(
     tags=["Conversations"],
-    # dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user)]
 )
 
 #  GET conversations by project

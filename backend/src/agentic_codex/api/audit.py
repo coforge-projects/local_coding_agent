@@ -4,13 +4,13 @@ from sqlalchemy import select, and_
 
 from datetime import datetime
 
+from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.db.database import get_db
 from agentic_codex.db.models import AuditLog
-# from agentic_codex.auth.auth_dependencies import get_current_user
 
 router = APIRouter(
     tags=["Audit"],
-    # dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user)]
 )
 
 # GET the audits from the project

@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from agentic_codex.db.database import create_tables
 
-# from agentic_codex.auth.auth_dependencies import require_role    #for temporarily disableing the msa login
+from agentic_codex.auth.auth_dependencies import get_current_user, require_role
+from agentic_codex.auth.jwt import create_access_token
 
 from agentic_codex.api.routes.chat import router as chat_router
 
@@ -30,7 +31,7 @@ async def login(email: str, password: str):
     try:
         async with engine.begin() as conn:
             query = text("""
-                SELECT email, password
+                SELECT id, email, password, role, token_version
                 FROM users
                 WHERE email = :email
             """)
@@ -41,13 +42,24 @@ async def login(email: str, password: str):
             if not user:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            user_password = user[1]
+            user_password = user[2]
 
             if user_password != password:
                 raise HTTPException(status_code=401, detail="Invalid credentials")
 
-            return {"message": "Login successful"}
+           
+            token = create_access_token({
+            "user_id": user[0],
+            "email": user[1],
+            "role": user[3],
+            "token_version": user[4]
+              })
 
+
+            return {
+                "access_token": token,
+                "token_type": "bearer"
+            }
     except Exception as e:
         print("Login error:", e)
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -95,7 +107,19 @@ async def signup(email: str, name: str, password: str):
 
 
 @app.post("/logout")
-def logout():
+async def logout(user=Depends(get_current_user)):
+    user_id = user.get("user_id")
+
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("""
+                UPDATE users
+                SET token_version = token_version + 1
+                WHERE id = :user_id
+            """),
+            {"user_id": user_id}
+        )
+
     return {"message": "Logged out successfully"}
 
 #-----------------------------
@@ -133,11 +157,10 @@ async def startup():
 
 # ✅ Health check with RBAC
 @app.get("/health")
-# def health_check(user=Depends(require_role("viewer"))):
-def health_check():
+def health_check(user=Depends(require_role("viewer"))):
     return {
         "status": "ok",
-        # "user": user
+        "user": user
     }
 
 

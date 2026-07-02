@@ -5,14 +5,14 @@ import aiofiles
 
 from agentic_codex.db.database import get_db
 from agentic_codex.db.repos.project_repo import ProjectRepo
-# from agentic_codex.auth.auth_dependencies import get_current_user
+from agentic_codex.auth.auth_dependencies import get_current_user
 
 
 
 router = APIRouter(
     prefix="/projects",
     tags=["Projects"],
-    # dependencies=[Depends(get_current_user)]
+    dependencies=[Depends(get_current_user)]
 )
 
 

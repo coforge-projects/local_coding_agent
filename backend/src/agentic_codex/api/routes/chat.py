@@ -3,6 +3,7 @@ from agentic_codex.api.schemas.chat import ChatRequest, ChatResponse, ChatMessag
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
+from agentic_codex.auth.auth_dependencies import get_current_user
 # ✅ DB
 from agentic_codex.db.database import get_db
 from agentic_codex.db.repos.message_repo import MessageRepo
@@ -12,11 +13,16 @@ from agentic_codex.db.repos.project_repo import ProjectRepo
 # ✅ Supervisor
 from agentic_codex.agents.supervisor import Supervisor
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(
+    payload: ChatRequest,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+    ):
+
     project_id = payload.project_id
     conversation_id = payload.conversation_id
     message = payload.message
@@ -45,7 +51,7 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
             "id": project_uuid,
             "name": f"Project-{project_id}",
             "desc": "Auto-created project",
-            "owner_id": None,
+            "owner_id": user["user_id"],
             "language": "python"
         })
 
@@ -59,7 +65,7 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
         convo = await conversation_repo.create({
             "id": uuid.uuid4(),
             "project_id": project_id,
-            "user_id": None,
+            "user_id": user["user_id"],
             "title": "New Conversation"
         })
         conversation_id = convo.id

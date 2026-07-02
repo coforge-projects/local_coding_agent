@@ -1,26 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from agentic_codex.auth.auth_dependencies import get_current_user, security
 from agentic_codex.db.database import get_db
-# from agentic_codex.auth.auth_dependencies import get_current_user
 from agentic_codex.db.models import User, ProjectMember
 
 
 router = APIRouter(
     tags=["Users"],
-    # dependencies=[Depends(get_current_user)]
+    dependencies=[Security(security)]
 )
 
 
 #  CURRENT USER
 @router.get("/users/me")
-# async def get_me(user=Depends(get_current_user)):
-#     return user
-async def get_me():
+async def get_me(user=Depends(get_current_user)):
     return {
-        "message": "MSA login temporarily disabled",
-        # "user": user
+        "message": "Authenticated user",
+        "user": user
     }
 
 
