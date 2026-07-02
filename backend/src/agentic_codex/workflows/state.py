@@ -11,3 +11,6 @@ class AgentState(TypedDict):
     success: bool
     validation_reason: str
     retry_count: int
+
+    reflection: str
+    needs_retry: bool

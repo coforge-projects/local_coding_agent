@@ -103,6 +103,7 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
     })
 
     return ChatResponse(
+        project_id=project_id,
         conversation_id=str(conversation_id),
         message=ChatMessage(
             id=str(uuid.uuid4()),

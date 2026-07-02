@@ -16,5 +16,6 @@ class ChatMessage(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    project_id: str
     conversation_id: str
     message: ChatMessage

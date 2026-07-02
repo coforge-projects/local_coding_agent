@@ -33,7 +33,9 @@ class ExecutorAgent(BaseAgent):
             )
         }
 
-        response_text = await super().run([system_prompt] + messages)
+        response_text = await super().run(
+            [system_prompt] + messages
+        )
 
         try:
             json_part = None
@@ -59,39 +61,90 @@ class ExecutorAgent(BaseAgent):
                 results = []
                 last_file = None
 
-                mcp_executor = MCPExecutor(self.project_id)
-                tool_registry = get_tool_registry(self.project_id)
+                mcp_executor = MCPExecutor(
+                    self.project_id
+                )
+
+                tool_registry = get_tool_registry(
+                    self.project_id
+                )
 
                 for action_item in action_list:
+                    print(f"ACTION ITEM: {action_item}")
+
                     action = action_item.get("action")
-                    input_value = action_item.get("input", "")
-                    content_value = action_item.get("content", "")
+                    input_value = action_item.get(
+                        "input",
+                        ""
+                    )
+                    content_value = action_item.get(
+                        "content",
+                        ""
+                    )
 
                     # filename cleanup
-                    if "." in input_value:
-                        parts = input_value.split(".")
-                        input_value = parts[0] + "." + parts[1].split()[0]
-                    else:
-                        input_value = input_value.split()[0]
+                    if input_value:
+                        if "." in input_value:
+                            parts = input_value.split(".")
+                            input_value = (
+                                parts[0]
+                                + "."
+                                + parts[1].split()[0]
+                            )
+                        else:
+                            input_value = input_value.split()[0]
 
                     if action not in tool_registry:
+                        print(
+                            f"UNKNOWN TOOL: {action}"
+                        )
                         continue
 
-                    result = mcp_executor.invoke(
+                    result = await mcp_executor.invoke(
                         action,
                         input_value,
                         content_value
                     )
 
-                    if action in ["create_file", "write_file"]:
+                    print(f"TOOL: {action}")
+                    print(f"RESULT: {result}")
+
+                    if action in [
+                        "create_file",
+                        "write_file"
+                    ]:
                         last_file = input_value
+
+                    error_indicators = [
+                        "Error:",
+                        "Exception:",
+                        "Traceback",
+                        "SyntaxError",
+                        "NameError",
+                        "TypeError",
+                        "ImportError",
+                        "IndentationError"
+                    ]
+
+                    has_error = (
+                        isinstance(result, str)
+                        and any(
+                            indicator in result
+                            for indicator in error_indicators
+                        )
+                    )
 
                     if (
                         action == "execute_python"
-                        and "Error:" in result
+                        and has_error
                         and last_file
                     ):
+                        print(
+                            "AUTO DEBUG TRIGGERED"
+                        )
+
                         error_msg = result
+
                         code = read_file(
                             self.project_id,
                             last_file
@@ -101,9 +154,11 @@ class ExecutorAgent(BaseAgent):
                             {
                                 "role": "system",
                                 "content": (
-                                    "Fix Python code. "
-                                    "Return ONLY corrected code "
-                                    "with proper print()."
+                                    "Fix Python code.\n"
+                                    "Return ONLY the corrected code.\n"
+                                    "Do not explain.\n"
+                                    "Do not use markdown.\n"
+                                    "Return valid runnable Python."
                                 )
                             },
                             {
@@ -121,9 +176,9 @@ class ExecutorAgent(BaseAgent):
 
                         fixed_code = (
                             fix_response
-                            .strip()
                             .replace("```python", "")
                             .replace("```", "")
+                            .strip()
                         )
 
                         write_file(
@@ -137,12 +192,19 @@ class ExecutorAgent(BaseAgent):
                             last_file
                         )
 
-                    results.append(result)
+                        print(
+                            "AFTER AUTO DEBUG:"
+                        )
+                        print(result)
+
+                    results.append(str(result))
 
                 if results:
                     return "\n".join(results)
 
         except Exception as e:
-            return f"Execution error: {str(e)}"
+            return (
+                f"Execution error: {str(e)}"
+            )
 
         return response_text
