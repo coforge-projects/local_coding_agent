@@ -39,6 +39,31 @@ async def executor_node(state: AgentState):
     }
 
 
+async def validation_node(state: AgentState):
+    response = state.get("response", "").lower()
+
+    failure_patterns = [
+        "error",
+        "exception",
+        "traceback",
+        "failed"
+    ]
+
+    for pattern in failure_patterns:
+        if pattern in response:
+            return {
+                **state,
+                "success": False,
+                "validation_reason": f"Detected '{pattern}' in execution response"
+            }
+
+    return {
+        **state,
+        "success": True,
+        "validation_reason": "Validation passed"
+    }
+
+
 async def coding_node(state: AgentState):
     coder = CodingAgent()
 

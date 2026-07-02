@@ -1,11 +1,17 @@
 from langgraph.graph import StateGraph, END
-from agentic_codex.workflows.tool_selection_node import tool_selection_node
+
+from agentic_codex.workflows.tool_selection_node import (
+    tool_selection_node
+)
 from agentic_codex.workflows.state import AgentState
-from agentic_codex.workflows.database_node import database_node
+from agentic_codex.workflows.database_node import (
+    database_node
+)
 
 from agentic_codex.workflows.nodes import (
     planner_node,
     executor_node,
+    validation_node,
     coding_node
 )
 
@@ -24,10 +30,14 @@ def should_execute(state: AgentState):
         "debug"
     ]
 
-    if any(keyword in user_message for keyword in execution_keywords):
+    if any(
+        keyword in user_message
+        for keyword in execution_keywords
+    ):
         return "executor"
 
     return "coding"
+
 
 def route_tool_category(state: AgentState):
     category = state.get("selected_tool_category")
@@ -40,6 +50,7 @@ def route_tool_category(state: AgentState):
 
     return "coding"
 
+
 def build_graph():
     graph = StateGraph(AgentState)
 
@@ -47,13 +58,14 @@ def build_graph():
     graph.add_node("tool_selection", tool_selection_node)
     graph.add_node("database", database_node)
     graph.add_node("executor", executor_node)
+    graph.add_node("validation", validation_node)
     graph.add_node("coding", coding_node)
 
     graph.set_entry_point("planner")
 
     graph.add_edge(
-    "planner",
-    "tool_selection"
+        "planner",
+        "tool_selection"
     )
 
     graph.add_conditional_edges(
@@ -66,9 +78,24 @@ def build_graph():
         }
     )
 
+    graph.add_edge(
+        "executor",
+        "validation"
+    )
 
-    graph.add_edge("executor", END)
-    graph.add_edge("coding", END)
-    graph.add_edge("database", END)
+    graph.add_edge(
+        "validation",
+        END
+    )
+
+    graph.add_edge(
+        "coding",
+        END
+    )
+
+    graph.add_edge(
+        "database",
+        END
+    )
 
     return graph.compile()

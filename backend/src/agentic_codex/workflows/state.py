@@ -7,3 +7,7 @@ class AgentState(TypedDict):
     plan: str
     response: str
     selected_tool_category: str
+
+    success: bool
+    validation_reason: str
+    retry_count: int
