@@ -42,7 +42,7 @@ async def create_project(data: dict, db: AsyncSession = Depends(get_db)):
 
 #  GET PROJECT BY ID
 @router.get("/{id}")
-async def get_project(id: int, db: AsyncSession = Depends(get_db)):
+async def get_project(id: str, db: AsyncSession = Depends(get_db)):
     repo = ProjectRepo(db)
     project = await repo.get_by_id(id)
 
@@ -54,7 +54,7 @@ async def get_project(id: int, db: AsyncSession = Depends(get_db)):
 
 #  DELETE PROJECT
 @router.delete("/{id}")
-async def delete_project(id: int, db: AsyncSession = Depends(get_db)):
+async def delete_project(id: str, db: AsyncSession = Depends(get_db)):
     repo = ProjectRepo(db)
     project = await repo.get_by_id(id)
 
@@ -69,7 +69,7 @@ async def delete_project(id: int, db: AsyncSession = Depends(get_db)):
 
 #  GET FILE TREE
 @router.get("/{id}/files")
-async def list_files(id: int):
+async def list_files(id: str):
     base = Path(f"./projects/{id}")
 
     if not base.exists():
@@ -87,7 +87,7 @@ async def list_files(id: int):
 
 #  READ FILE
 @router.get("/{id}/file")
-async def read_file(id: int, path: str):
+async def read_file(id: str, path: str):
     file_path = Path(f"./projects/{id}") / path
 
     if not file_path.exists():
@@ -101,7 +101,7 @@ async def read_file(id: int, path: str):
 
 #  WRITE FILE
 @router.post("/{id}/file")
-async def write_file(id: int, path: str, content: str):
+async def write_file(id: str, path: str, content: str):
     file_path = Path(f"./projects/{id}") / path
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
