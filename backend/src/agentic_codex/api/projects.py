@@ -23,11 +23,23 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
     return await repo.list_all()
 
 
-#  CREATE PROJECT
+# CREATE PROJECT
 @router.post("/")
-async def create_project(data: dict, db: AsyncSession = Depends(get_db)):
+async def create_project(
+    data: dict,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     repo = ProjectRepo(db)
-    project = await repo.create(data)
+
+    project_data = {
+        "name": data.get("name"),
+        "desc": data.get("desc"),
+        "language": data.get("language"),
+        "owner_id": user["user_id"]
+    }
+
+    project = await repo.create(project_data)
 
     # Create project folder
     project_dir = Path(f"./projects/{project.id}")
@@ -38,8 +50,6 @@ async def create_project(data: dict, db: AsyncSession = Depends(get_db)):
     (project_dir / "main.py").write_text("# Entry point")
 
     return project
-
-
 #  GET PROJECT BY ID
 @router.get("/{id}")
 async def get_project(id: str, db: AsyncSession = Depends(get_db)):
